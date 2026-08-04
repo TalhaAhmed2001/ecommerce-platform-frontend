@@ -7,9 +7,38 @@ export type User = {
   status: string;
 };
 
+export type ProductStatus = 'ACTIVE' | 'INACTIVE';
+
+export type Product = {
+  id: string;
+  name: string;
+  description: string | null;
+  priceCents: number;
+  status: ProductStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type AuthResponse = {
   user: User;
 };
+
+type ProductsResponse = {
+  products: Product[];
+};
+
+type ProductResponse = {
+  product: Product;
+};
+
+type CreateProductInput = {
+  name: string;
+  description?: string | null;
+  priceCents: number;
+  status?: ProductStatus;
+};
+
+type UpdateProductInput = Partial<CreateProductInput>;
 
 type ApiErrorResponse = {
   error?: {
@@ -86,5 +115,20 @@ export const apiClient = {
   logout: (): Promise<{ success: boolean }> =>
     request('/api/auth/logout', {
       method: 'POST'
+    }),
+  listProducts: (search?: string): Promise<ProductsResponse> => {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    return request(`/api/products${query}`);
+  },
+  listAdminProducts: (): Promise<ProductsResponse> => request('/api/admin/products'),
+  createProduct: (input: CreateProductInput): Promise<ProductResponse> =>
+    request('/api/admin/products', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    }),
+  updateProduct: (id: string, input: UpdateProductInput): Promise<ProductResponse> =>
+    request(`/api/admin/products/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input)
     })
 };
