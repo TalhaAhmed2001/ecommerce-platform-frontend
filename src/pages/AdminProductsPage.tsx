@@ -1,6 +1,14 @@
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
-import { apiClient, type Product, type ProductStatus } from '../api/client';
+import {
+  ApiError,
+  apiClient,
+  type InventoryItem,
+  type Product,
+  type ProductStatus
+} from '../api/client';
+
+type InventorySummary = Pick<InventoryItem, 'availableQty' | 'reservedQty'>;
 
 const formatPrice = (priceCents: number): string => {
   return new Intl.NumberFormat('en-US', {
@@ -11,13 +19,35 @@ const formatPrice = (priceCents: number): string => {
 
 export const AdminProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [inventoryByProduct, setInventoryByProduct] = useState<
+    Record<string, InventorySummary | null>
+  >({});
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stockSubmittingFor, setStockSubmittingFor] = useState<string | null>(null);
 
   const loadProducts = async (): Promise<void> => {
     const response = await apiClient.listAdminProducts();
     setProducts(response.products);
+    await loadInventory(response.products);
+  };
+
+  const loadInventory = async (productsToLoad: Product[]): Promise<void> => {
+    const entries = await Promise.all(
+      productsToLoad.map(async (product) => {
+        try {
+          const response = await apiClient.getAdminInventory(product.id);
+          return [product.id, response.inventory] as const;
+        } catch (inventoryError) {
+          if (inventoryError instanceof ApiError && inventoryError.status === 404) {
+            return [product.id, null] as const;
+          }
+          throw inventoryError;
+        }
+      })
+    );
+    setInventoryByProduct(Object.fromEntries(entries));
   };
 
   useEffect(() => {
@@ -28,6 +58,22 @@ export const AdminProductsPage = () => {
         const response = await apiClient.listAdminProducts();
         if (isMounted) {
           setProducts(response.products);
+        }
+        const inventoryEntries = await Promise.all(
+          response.products.map(async (product) => {
+            try {
+              const inventoryResponse = await apiClient.getAdminInventory(product.id);
+              return [product.id, inventoryResponse.inventory] as const;
+            } catch (inventoryError) {
+              if (inventoryError instanceof ApiError && inventoryError.status === 404) {
+                return [product.id, null] as const;
+              }
+              throw inventoryError;
+            }
+          })
+        );
+        if (isMounted) {
+          setInventoryByProduct(Object.fromEntries(inventoryEntries));
         }
       } catch (caughtError) {
         if (isMounted) {
@@ -88,6 +134,32 @@ export const AdminProductsPage = () => {
     }
   };
 
+  const handleSetStock = async (
+    event: FormEvent<HTMLFormElement>,
+    productId: string
+  ): Promise<void> => {
+    event.preventDefault();
+    setError(null);
+    setStockSubmittingFor(productId);
+
+    const formData = new FormData(event.currentTarget);
+
+    try {
+      const response = await apiClient.setInventory(
+        productId,
+        Number(formData.get('availableQty'))
+      );
+      setInventoryByProduct((current) => ({
+        ...current,
+        [productId]: response.inventory
+      }));
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Could not update stock');
+    } finally {
+      setStockSubmittingFor(null);
+    }
+  };
+
   return (
     <main className="page page-wide">
       <section className="panel panel-wide">
@@ -119,20 +191,49 @@ export const AdminProductsPage = () => {
         {isLoading ? <p className="muted">Loading...</p> : null}
         {error ? <p className="error">{error}</p> : null}
         <div className="product-list">
-          {products.map((product) => (
-            <article className="product-card" key={product.id}>
-              <div>
-                <h2>{product.name}</h2>
-                <p className="muted">{product.description ?? 'No description provided.'}</p>
-                <p className="muted">
-                  {formatPrice(product.priceCents)} - {product.status}
-                </p>
-              </div>
-              <button type="button" onClick={() => void handleToggleStatus(product)}>
-                {product.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-              </button>
-            </article>
-          ))}
+          {products.map((product) => {
+            const inventory = inventoryByProduct[product.id];
+
+            return (
+              <article className="product-card" key={product.id}>
+                <div>
+                  <h2>{product.name}</h2>
+                  <p className="muted">{product.description ?? 'No description provided.'}</p>
+                  <p className="muted">
+                    {formatPrice(product.priceCents)} - {product.status}
+                  </p>
+                  <p className="muted">
+                    {inventory
+                      ? `Available: ${inventory.availableQty} - Reserved: ${inventory.reservedQty}`
+                      : 'Inventory not set'}
+                  </p>
+                </div>
+                <div className="product-actions">
+                  <form
+                    className="stock-form"
+                    onSubmit={(event) => void handleSetStock(event, product.id)}
+                  >
+                    <input
+                      key={`${product.id}-${inventory?.availableQty ?? 'unset'}`}
+                      aria-label={`Available quantity for ${product.name}`}
+                      name="availableQty"
+                      type="number"
+                      min="0"
+                      step="1"
+                      defaultValue={inventory?.availableQty ?? 0}
+                      required
+                    />
+                    <button type="submit" disabled={stockSubmittingFor === product.id}>
+                      {stockSubmittingFor === product.id ? 'Saving...' : 'Set stock'}
+                    </button>
+                  </form>
+                  <button type="button" onClick={() => void handleToggleStatus(product)}>
+                    {product.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </main>

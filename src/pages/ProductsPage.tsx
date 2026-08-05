@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiClient, type Product } from '../api/client';
+import { ApiError, apiClient, type Product, type PublicInventory } from '../api/client';
 
 const formatPrice = (priceCents: number): string => {
   return new Intl.NumberFormat('en-US', {
@@ -10,6 +10,9 @@ const formatPrice = (priceCents: number): string => {
 
 export const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [inventoryByProduct, setInventoryByProduct] = useState<
+    Record<string, PublicInventory | null>
+  >({});
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -21,6 +24,22 @@ export const ProductsPage = () => {
         const response = await apiClient.listProducts();
         if (isMounted) {
           setProducts(response.products);
+        }
+        const inventoryEntries = await Promise.all(
+          response.products.map(async (product) => {
+            try {
+              const inventoryResponse = await apiClient.getPublicInventory(product.id);
+              return [product.id, inventoryResponse.inventory] as const;
+            } catch (inventoryError) {
+              if (inventoryError instanceof ApiError && inventoryError.status === 404) {
+                return [product.id, null] as const;
+              }
+              throw inventoryError;
+            }
+          })
+        );
+        if (isMounted) {
+          setInventoryByProduct(Object.fromEntries(inventoryEntries));
         }
       } catch (caughtError) {
         if (isMounted) {
@@ -48,15 +67,24 @@ export const ProductsPage = () => {
         {error ? <p className="error">{error}</p> : null}
         {!isLoading && !error && products.length === 0 ? <p className="muted">No products available.</p> : null}
         <div className="product-list">
-          {products.map((product) => (
-            <article className="product-card" key={product.id}>
-              <div>
-                <h2>{product.name}</h2>
-                <p className="muted">{product.description ?? 'No description provided.'}</p>
-              </div>
-              <strong>{formatPrice(product.priceCents)}</strong>
-            </article>
-          ))}
+          {products.map((product) => {
+            const inventory = inventoryByProduct[product.id];
+
+            return (
+              <article className="product-card" key={product.id}>
+                <div>
+                  <h2>{product.name}</h2>
+                  <p className="muted">{product.description ?? 'No description provided.'}</p>
+                </div>
+                <div className="product-meta">
+                  <strong>{formatPrice(product.priceCents)}</strong>
+                  <span className="muted">
+                    {inventory ? `${inventory.availableQty} available` : 'Availability not set'}
+                  </span>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </main>

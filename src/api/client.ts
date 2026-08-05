@@ -19,6 +19,27 @@ export type Product = {
   updatedAt: string;
 };
 
+export type PublicInventory = {
+  productId: string;
+  availableQty: number;
+};
+
+export type InventoryItem = PublicInventory & {
+  id: string;
+  reservedQty: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminInventory = InventoryItem & {
+  reservations: Array<{
+    id: string;
+    quantity: number;
+    status: 'ACTIVE' | 'RELEASED' | 'COMMITTED' | 'EXPIRED';
+    expiresAt: string;
+  }>;
+};
+
 type AuthResponse = {
   user: User;
 };
@@ -29,6 +50,18 @@ type ProductsResponse = {
 
 type ProductResponse = {
   product: Product;
+};
+
+type PublicInventoryResponse = {
+  inventory: PublicInventory;
+};
+
+type AdminInventoryResponse = {
+  inventory: AdminInventory;
+};
+
+type InventoryItemResponse = {
+  inventory: InventoryItem;
 };
 
 type CreateProductInput = {
@@ -46,7 +79,7 @@ type ApiErrorResponse = {
   };
 };
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status: number
@@ -130,5 +163,14 @@ export const apiClient = {
     request(`/api/admin/products/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(input)
+    }),
+  getPublicInventory: (productId: string): Promise<PublicInventoryResponse> =>
+    request(`/api/inventory/${productId}`),
+  getAdminInventory: (productId: string): Promise<AdminInventoryResponse> =>
+    request(`/api/admin/inventory/${productId}`),
+  setInventory: (productId: string, availableQty: number): Promise<InventoryItemResponse> =>
+    request(`/api/admin/inventory/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ availableQty })
     })
 };
