@@ -7,6 +7,7 @@ import {
   type Product,
   type ProductStatus
 } from '../api/client';
+import { Navigation } from '../components/Navigation';
 
 type InventorySummary = Pick<InventoryItem, 'availableQty' | 'reservedQty'>;
 
@@ -163,6 +164,7 @@ export const AdminProductsPage = () => {
   return (
     <main className="page page-wide">
       <section className="panel panel-wide">
+        <Navigation isAdmin />
         <h1>Admin Products</h1>
         <form className="product-form" onSubmit={(event) => void handleCreate(event)}>
           <label>

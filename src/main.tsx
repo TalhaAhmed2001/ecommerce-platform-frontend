@@ -1,7 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AdminRoute } from './components/AdminRoute';
 import { AdminProductsPage } from './pages/AdminProductsPage';
+import { CartPage } from './pages/CartPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProductsPage } from './pages/ProductsPage';
@@ -17,7 +19,15 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/products" element={<ProductsPage />} />
-        <Route path="/admin/products" element={<AdminProductsPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route
+          path="/admin/products"
+          element={
+            <AdminRoute>
+              <AdminProductsPage />
+            </AdminRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   </StrictMode>

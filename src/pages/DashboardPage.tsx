@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient, type User } from '../api/client';
+import { Navigation } from '../components/Navigation';
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
@@ -61,6 +62,7 @@ export const DashboardPage = () => {
   return (
     <main className="page">
       <section className="panel">
+        <Navigation user={user} />
         <div className="header-row">
           <h1>Dashboard</h1>
           <button

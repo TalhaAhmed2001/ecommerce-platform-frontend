@@ -5,7 +5,10 @@ This repository is part of a long-term learning and portfolio project for a prod
 ## Product Direction
 
 - Keep the frontend minimal while the backend foundation is being built.
-- Do not add product, cart, order, payment, or notification UI until the corresponding backend modules exist.
+- Do not add order, payment, or notification UI until the corresponding backend modules exist.
+- Cart UI may be frontend-only using localStorage until backend checkout exists.
+- The frontend cart must not reserve stock or be treated as trusted state.
+- At checkout, the backend must validate product status, current price, and inventory availability before creating an order.
 - Prefer clear, maintainable UI code over broad feature work.
 - Treat this as public GitHub portfolio code.
 
