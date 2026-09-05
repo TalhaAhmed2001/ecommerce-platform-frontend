@@ -40,6 +40,55 @@ export type AdminInventory = InventoryItem & {
   }>;
 };
 
+export type OrderStatus =
+  | 'PAYMENT_PENDING'
+  | 'CONFIRMED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'EXPIRED';
+
+export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED';
+
+export type OrderItem = {
+  id: string;
+  productId: string;
+  productName: string;
+  unitPriceCents: number;
+  quantity: number;
+  lineTotalCents: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OrderPayment = {
+  id: string;
+  status: PaymentStatus;
+  amountCents: number;
+  provider: string;
+  providerReference: string | null;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: string;
+};
+
+export type Order = {
+  id: string;
+  userId: string;
+  status: OrderStatus;
+  subtotalCents: number;
+  totalCents: number;
+  createdAt: string;
+  updatedAt: string;
+  items: OrderItem[];
+  payment: OrderPayment | null;
+  expiresAt?: string;
+};
+
+export type CheckoutItem = {
+  productId: string;
+  quantity: number;
+};
+
 type AuthResponse = {
   user: User;
 };
@@ -62,6 +111,24 @@ type AdminInventoryResponse = {
 
 type InventoryItemResponse = {
   inventory: InventoryItem;
+};
+
+type CheckoutResponse = {
+  order: Order;
+  payment: OrderPayment | null;
+};
+
+type OrdersResponse = {
+  orders: Order[];
+};
+
+type OrderResponse = {
+  order: Order;
+};
+
+type PaymentResponse = {
+  payment: OrderPayment;
+  order: Order;
 };
 
 type CreateProductInput = {
@@ -172,5 +239,19 @@ export const apiClient = {
     request(`/api/admin/inventory/${productId}`, {
       method: 'PUT',
       body: JSON.stringify({ availableQty })
-    })
+    }),
+  checkout: (items: CheckoutItem[]): Promise<CheckoutResponse> =>
+    request('/api/orders/checkout', {
+      method: 'POST',
+      body: JSON.stringify({
+        items: items.map(({ productId, quantity }) => ({ productId, quantity }))
+      })
+    }),
+  getMyOrders: (): Promise<OrdersResponse> => request('/api/orders/my'),
+  getOrder: (orderId: string): Promise<OrderResponse> =>
+    request(`/api/orders/${encodeURIComponent(orderId)}`),
+  succeedPayment: (paymentId: string): Promise<PaymentResponse> =>
+    request(`/api/payments/${encodeURIComponent(paymentId)}/succeed`, { method: 'POST' }),
+  failPayment: (paymentId: string): Promise<PaymentResponse> =>
+    request(`/api/payments/${encodeURIComponent(paymentId)}/fail`, { method: 'POST' })
 };

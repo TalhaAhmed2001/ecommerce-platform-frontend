@@ -6,6 +6,8 @@ import { AdminProductsPage } from './pages/AdminProductsPage';
 import { CartPage } from './pages/CartPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
+import { OrderDetailPage } from './pages/OrderDetailPage';
+import { OrdersPage } from './pages/OrdersPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { RegisterPage } from './pages/RegisterPage';
 import './styles.css';
@@ -20,6 +22,8 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/cart" element={<CartPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/orders/:orderId" element={<OrderDetailPage />} />
         <Route
           path="/admin/products"
           element={

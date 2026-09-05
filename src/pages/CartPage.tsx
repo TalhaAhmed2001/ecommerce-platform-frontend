@@ -1,18 +1,15 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { apiClient } from '../api/client';
 import { changeCartItemQuantity, loadCart, saveCart, type CartItem } from '../cart';
 import { Navigation } from '../components/Navigation';
-
-const formatPrice = (priceCents: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(priceCents / 100);
-};
+import { formatCurrency, getCheckoutErrorMessage } from '../orderUi';
 
 export const CartPage = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState<CartItem[]>(loadCart);
   const [error, setError] = useState<string | null>(null);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const updateItems = (nextItems: CartItem[]): void => {
     setError(null);
@@ -31,6 +28,26 @@ export const CartPage = () => {
 
   const removeItem = (productId: string): void => {
     updateItems(items.filter((item) => item.productId !== productId));
+  };
+
+  const handleCheckout = async (): Promise<void> => {
+    if (items.length === 0) {
+      return;
+    }
+
+    setError(null);
+    setIsCheckingOut(true);
+
+    try {
+      const response = await apiClient.checkout(
+        items.map(({ productId, quantity }) => ({ productId, quantity }))
+      );
+      navigate(`/orders/${response.order.id}`);
+    } catch (caughtError) {
+      setError(getCheckoutErrorMessage(caughtError));
+    } finally {
+      setIsCheckingOut(false);
+    }
   };
 
   const cartTotal = items.reduce(
@@ -54,9 +71,9 @@ export const CartPage = () => {
             <article className="cart-item" key={item.productId}>
               <div>
                 <h2>{item.name}</h2>
-                <p className="muted">Unit price: {formatPrice(item.priceCents)}</p>
+                <p className="muted">Unit price: {formatCurrency(item.priceCents)}</p>
                 <p className="muted">
-                  Line total: {formatPrice(item.priceCents * item.quantity)}
+                  Line total: {formatCurrency(item.priceCents * item.quantity)}
                 </p>
                 <p className="muted">Availability snapshot: {item.availableQty}</p>
               </div>
@@ -88,9 +105,15 @@ export const CartPage = () => {
           ))}
         </div>
         <div className="cart-summary">
-          <strong>Total: {formatPrice(cartTotal)}</strong>
-          <button type="button" disabled>
-            Checkout coming next
+          <strong>Cart estimate: {formatCurrency(cartTotal)}</strong>
+          <button
+            type="button"
+            disabled={items.length === 0 || isCheckingOut}
+            onClick={() => {
+              void handleCheckout();
+            }}
+          >
+            {isCheckingOut ? 'Checking out...' : 'Checkout'}
           </button>
         </div>
       </section>

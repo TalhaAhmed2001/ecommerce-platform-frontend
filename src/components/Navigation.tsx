@@ -29,6 +29,7 @@ export const Navigation = ({ isAdmin = false, user }: NavigationProps) => {
     <nav className="navigation" aria-label="Main navigation">
       <NavLink to="/products">Products</NavLink>
       <NavLink to="/cart">Cart ({cartQuantity})</NavLink>
+      <NavLink to="/orders">Orders</NavLink>
       <NavLink to="/dashboard">Dashboard</NavLink>
       {isAdmin || user?.role === 'ADMIN' ? (
         <NavLink to="/admin/products">Admin Products</NavLink>
